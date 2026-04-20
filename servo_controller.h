@@ -1,22 +1,17 @@
-// servo_controller.h / servo_controller.cpp
+// servo_controller.h
 // Teensy 4.1 — Servo Controller
-// Responsible for: controlling all 8 fold/unfold servos,
-//                  executing fold and unfold commands as mirrored pairs
+// Responsible for: controlling all 8 fold/unfold servos individually
 // Runs on: Teensy 4.1
 //
 // Hardware layout:
-//   Big folder subsystem    — 4 servos (2 top, 2 bottom), driven as one mirrored pair
-//   Small folder subsystem  — 4 servos (2 left, 2 right), driven as one mirrored pair
+//   Big folder subsystem    — 4 servos: 2 top (A+B), 2 bottom (A+B)
+//   Small folder subsystem  — 4 servos: 2 left (A+B), 2 right (A+B)
 //
-// Within each folder, the two servos move together simultaneously.
-// "Fold"   → servos rotate from REST angle to FOLD angle
-// "Unfold" → servos rotate from FOLD angle back to REST angle
-
-#pragma once
-#include <Servo.h>
-
-// ── Subsystem identifiers ────────────────────────────────────────────────────
-enum Subsystem { SUBSYSTEM_BIG, SUBSYSTEM_SMALL };
+// Each folder pair (e.g. top A + top B) always moves together.
+// Mirrored partners within a pair may need opposite sign — confirm with mechanical team.
+// "Fold"   → servos sweep from REST to FOLD angle
+// "Unfold" → servos sweep from FOLD back to REST angle
+// All movement is non-blocking; angles advance each update() call.
 
 // ── Servo angle constants (TODO: tune all after physical assembly) ───────────
 // Big folder geometry
@@ -47,66 +42,83 @@ class ServoController {
 public:
 
     void init() {
-        // Attach all 8 Servo objects to their PWM pins
-        // TODO: assign pin numbers to each servo index
-        // Move all servos to REST angle immediately
         for (int i = 0; i < NUM_SERVOS; i++) {
+            int rest       = restAngleFor(i);
+            currentAngle[i] = rest;
+            targetAngle[i]  = rest;
+            moveComplete[i]  = true;
             // servos[i].attach(SERVO_PINS[i]);
-            // servos[i].write(restAngleFor(i));
+            // servos[i].write(rest);
         }
     }
 
-    // ── Commands from state machine ─────────────────────────────────────────
+    // ── Commands from state machine ───────────────────────────────────────────
+    // Each folder is actuated individually — only the commanded servo sweeps.
+    // Movement is non-blocking; actual angle advances each update() call.
 
-    void fold(Subsystem sub) {
-        // Begin sweeping the relevant servo group from rest to fold angle.
-        // Both folders in the subsystem move together (e.g. top AND bottom for BIG).
-        // Movement is non-blocking — actual angle advances each update() call.
-        //
-        // Set targetAngle[group] = FOLD_ANGLE for subsystem
-        // Set movingToFold[sub] = true
-        // Set moveComplete[sub] = false
-    }
+    void foldBottom()  { startMove(SERVO_BIG_BOT_A,    BIG_FOLD_ANGLE);
+                         startMove(SERVO_BIG_BOT_B,    BIG_FOLD_ANGLE);  }
 
-    void unfold(Subsystem sub) {
-        // Same as fold() but target = REST_ANGLE
-        // Set movingToFold[sub] = false
-        // Set moveComplete[sub] = false
-    }
+    void foldTop()     { startMove(SERVO_BIG_TOP_A,    BIG_FOLD_ANGLE);
+                         startMove(SERVO_BIG_TOP_B,    BIG_FOLD_ANGLE);  }
 
-    // ── Called every loop() ─────────────────────────────────────────────────
+    void foldLeft()    { startMove(SERVO_SMALL_LEFT_A,  SMALL_FOLD_ANGLE);
+                         startMove(SERVO_SMALL_LEFT_B,  SMALL_FOLD_ANGLE); }
+
+    void foldRight()   { startMove(SERVO_SMALL_RIGHT_A, SMALL_FOLD_ANGLE);
+                         startMove(SERVO_SMALL_RIGHT_B, SMALL_FOLD_ANGLE); }
+
+    void unfoldBig()   { startMove(SERVO_BIG_TOP_A,    BIG_REST_ANGLE);
+                         startMove(SERVO_BIG_TOP_B,    BIG_REST_ANGLE);
+                         startMove(SERVO_BIG_BOT_A,    BIG_REST_ANGLE);
+                         startMove(SERVO_BIG_BOT_B,    BIG_REST_ANGLE);  }
+
+    void unfoldSmall() { startMove(SERVO_SMALL_LEFT_A,  SMALL_REST_ANGLE);
+                         startMove(SERVO_SMALL_LEFT_B,  SMALL_REST_ANGLE);
+                         startMove(SERVO_SMALL_RIGHT_A, SMALL_REST_ANGLE);
+                         startMove(SERVO_SMALL_RIGHT_B, SMALL_REST_ANGLE); }
+
+    void stopAll()     { for (int i = 0; i < NUM_SERVOS; i++) {
+                             targetAngle[i]  = currentAngle[i];
+                             moveComplete[i] = true; } }
+
+    // ── Called every loop() ──────────────────────────────────────────────────
     void update() {
-        // For each subsystem (BIG, SMALL):
-        //   if moveComplete[sub]: skip
-        //
-        //   Advance currentAngle toward targetAngle by SERVO_SWEEP_SPEED degrees
-        //   Write new angle to both servos in the subsystem pair
-        //   If currentAngle == targetAngle: moveComplete[sub] = true
-        //
-        // Note: mirrored pairs may need one servo to move in the opposite direction
-        //   (e.g. top folder sweeps +degrees, bottom folder sweeps -degrees)
-        //   Handle this by negating the angle delta for the mirrored member.
-        //   TODO: confirm sign convention with mechanical team.
-    }
-
-    bool currentMoveComplete(Subsystem sub) {
-        // Returns true if the commanded subsystem has reached its target angle
-        return moveComplete[(int)sub];
+        // For each servo, advance currentAngle toward targetAngle by SERVO_SWEEP_SPEED.
+        // Note: mirrored servos within a pair may need opposite sign — one sweeps
+        // +degrees while its partner sweeps -degrees to produce a symmetric fold.
+        // TODO: confirm sign convention with mechanical team and negate as needed.
+        for (int i = 0; i < NUM_SERVOS; i++) {
+            if (moveComplete[i]) continue;
+            int delta = targetAngle[i] - currentAngle[i];
+            if (abs(delta) <= SERVO_SWEEP_SPEED) {
+                currentAngle[i] = targetAngle[i];
+                moveComplete[i] = true;
+            } else {
+                currentAngle[i] += (delta > 0) ? SERVO_SWEEP_SPEED : -SERVO_SWEEP_SPEED;
+            }
+            // servos[i].write(currentAngle[i]);
+        }
     }
 
     bool allMovesComplete() {
-        return moveComplete[SUBSYSTEM_BIG] && moveComplete[SUBSYSTEM_SMALL];
+        for (int i = 0; i < NUM_SERVOS; i++) {
+            if (!moveComplete[i]) return false;
+        }
+        return true;
     }
 
 private:
     Servo servos[NUM_SERVOS];
-    int   currentAngle[2] = {BIG_REST_ANGLE, SMALL_REST_ANGLE};
-    int   targetAngle[2]  = {BIG_REST_ANGLE, SMALL_REST_ANGLE};
-    bool  moveComplete[2] = {true, true};
-    bool  movingToFold[2] = {false, false};
+    int   currentAngle[NUM_SERVOS];
+    int   targetAngle[NUM_SERVOS];
+    bool  moveComplete[NUM_SERVOS];
 
-    int restAngleFor(int servoIndex) {
-        // Return BIG_REST_ANGLE for servos 0-3, SMALL_REST_ANGLE for 4-7
-        return (servoIndex < 4) ? BIG_REST_ANGLE : SMALL_REST_ANGLE;
+    void startMove(int servoIndex, int angle) {
+        targetAngle[servoIndex]  = angle;
+        moveComplete[servoIndex] = false;
     }
-};
+
+    int restAngleFor(int i) {
+        return (i < 4) ? BIG_REST_ANGLE : SMALL_REST_ANGLE;
+    }

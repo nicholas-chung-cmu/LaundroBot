@@ -1,57 +1,97 @@
 # ui.py
-# Raspberry Pi — User Interface Module
-# Responsible for: displaying controls, capturing user input, showing status feedback
+# Raspberry Pi — User Interface
+# Responsible for: size selection, start trigger, status display
 # Runs on: Raspberry Pi
-# Depends on: sequencer.py (via callback), serial_dispatcher.py (for status updates)
+# Depends on: serial_dispatcher.py
+#
+# The RPi's only job in the fold process is:
+#   1. Let the user pick a size and press Start
+#   2. Send one message to the Teensy: "START:<size>"
+#   3. Wait for "DONE" or "WARNING:<reason>" and update the display
+#
+# All sequencing, sensor reading, and motor control happens on the Teensy.
 
-# ─── Imports ────────────────────────────────────────────────────────────────
 import tkinter as tk
-from sequencer import Sequencer
 from serial_dispatcher import SerialDispatcher
 
-# ─── Constants ──────────────────────────────────────────────────────────────
 SIZES = ["S", "M", "L"]
 
-# ─── UI Class ───────────────────────────────────────────────────────────────
 class FoldingRobotUI:
 
     def __init__(self, root):
         self.root = root
         self.selected_size = tk.StringVar(value="M")
-        self.status_text = tk.StringVar(value="Ready")
+        self.status_text   = tk.StringVar(value="Waiting for robot...")
 
         self.dispatcher = SerialDispatcher(
-            port="/dev/ttyUSB0",        # TODO: confirm serial port
+            port="/dev/ttyUSB0",       # TODO: confirm port (run `ls /dev/ttyUSB*`)
             baud=115200,
-            on_status=self.handle_status_update
+            on_message=self.handle_message
         )
-        self.sequencer = Sequencer(self.dispatcher)
 
         self._build_ui()
+        self._set_controls_enabled(False)   # disabled until Teensy sends READY
 
     def _build_ui(self):
         # Size selector — radio buttons for S, M, L
         for size in SIZES:
-            # create radio button bound to self.selected_size
+            # tk.Radiobutton(
+            #     self.root, text=size, variable=self.selected_size, value=size
+            # ).pack()
+            pass
 
-        # Start button — calls self.on_start_pressed
-        # Status label — bound to self.status_text
+        # Start button
+        # self.start_btn = tk.Button(
+        #     self.root, text="Start", command=self.on_start_pressed
+        # )
+        # self.start_btn.pack()
+
+        # Status label
+        # tk.Label(self.root, textvariable=self.status_text).pack()
         pass
 
     def on_start_pressed(self):
-        # Disable start button to prevent re-entry during fold
-        # Read selected size from self.selected_size
-        # Call self.sequencer.start(size)
+        size = self.selected_size.get()         # "S", "M", or "L"
+        self._set_controls_enabled(False)
+        self.status_text.set("Folding...")
+        self.dispatcher.send(f"START:{size}")   # only message RPi ever sends
+
+    def handle_message(self, message: str):
+        # All inbound messages from Teensy are handled here.
+        #
+        # Expected messages:
+        #   "READY"              — Teensy has homed and scanned, fold can begin
+        #   "DONE"               — fold sequence completed successfully
+        #   "WARNING:<reason>"   — fault or placement error; reason is a short string
+        #                          e.g. "WARNING:STALL_BIG_TOP"
+        #                               "WARNING:PLACEMENT_OUT_OF_RANGE"
+        #                               "WARNING:UNKNOWN_GARMENT"
+        #
+        # Note: no ACK messages — the Teensy handles sequencing internally.
+
+        if message == "READY":
+            self.status_text.set("Ready — select size and press Start")
+            self._set_controls_enabled(True)
+
+        elif message == "DONE":
+            self.status_text.set("Done!")
+            self._set_controls_enabled(True)
+
+        elif message.startswith("WARNING:"):
+            reason = message.split(":", 1)[1]
+            self.status_text.set(f"Warning: {reason} — reposition garment and try again")
+            self._set_controls_enabled(True)
+
+    def _set_controls_enabled(self, enabled: bool):
+        # Enable or disable the size selector and start button
+        # state = tk.NORMAL if enabled else tk.DISABLED
+        # self.start_btn.config(state=state)
+        # for widget in size_radio_buttons: widget.config(state=state)
         pass
 
-    def handle_status_update(self, status: str):
-        # Called by dispatcher when a message arrives from Teensy
-        # Parse status string:
-        #   "GARMENT:SHIRT" or "GARMENT:PANTS" → store garment type, pass to sequencer
-        #   "OFFSET:x,y"                        → pass offset to sequencer
-        #   "READY"                             → update status label, enable start button
-        #   "ACK"                               → update progress indicator (step N of M done)
-        #   "DONE"                              → show completion message, re-enable start
-        #   "WARNING:reason"                    → show warning string, re-enable start button
-        #                                         sequencer.reset() to clear state
-        pass
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("Laundry Folding Robot")
+    app = FoldingRobotUI(root)
+    root.mainloop()

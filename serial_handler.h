@@ -1,80 +1,79 @@
-// serial_handler.h / serial_handler.cpp
+// serial_handler.h
 // Teensy 4.1 — Serial Communication Handler
-// Responsible for: reading newline-terminated ASCII commands from RPi,
-//                  routing them to the state machine,
-//                  sending status/response strings back to RPi
+// Responsible for: parsing inbound messages from RPi,
+//                  sending READY / DONE / WARNING outbound
 // Runs on: Teensy 4.1
-// Depends on: state_machine.h
+// Depends on: state_machine.h, fold_library.h
+//
+// Inbound (RPi → Teensy):
+//   "START:<size>\n"   size is S, M, or L — triggers fold sequence
+//   "RESET\n"          abort and re-home
+//
+// Outbound (Teensy → RPi):
+//   "READY\n"          homed and scanned, waiting for START
+//   "DONE\n"           fold sequence complete
+//   "WARNING:<reason>" fault or placement error
 
 #pragma once
+#include <Arduino.h>
+#include "fold_library.h"
 #include "state_machine.h"
 
 class SerialHandler {
 public:
 
     void init(StateMachine* sm) {
-        this->stateMachine = sm;
-        // Serial already begun in main.cpp setup()
-        inputBuffer = "";
+        stateMachine = sm;
+        inputBuffer  = "";
+        // Serial.begin(115200);  — done in main.cpp setup()
     }
 
-    // ── Called every loop() ─────────────────────────────────────────────────
+    // ── Called every loop() ───────────────────────────────────────────────────
     void update() {
-        // Read all available bytes from Serial into inputBuffer
-        // When a '\n' is found:
-        //   extract the complete line (trim whitespace)
-        //   pass to parseAndRoute()
-        //   clear inputBuffer
-
+        // Accumulate incoming bytes into inputBuffer.
+        // On newline: parse the complete line and clear buffer.
+        //
         // while (Serial.available()) {
-        //     char c = Serial.read();
+        //     char c = (char)Serial.read();
         //     if (c == '\n') {
-        //         parseAndRoute(inputBuffer);
+        //         parse(inputBuffer);
         //         inputBuffer = "";
-        //     } else {
+        //     } else if (c != '\r') {
         //         inputBuffer += c;
         //     }
         // }
     }
 
-    // ── Outbound messages (called by state machine) ──────────────────────────
-
-    static void send(const String& message) {
-        // Write message + newline to Serial
+    // ── Outbound — called by state_machine via transition() ───────────────────
+    static void send(const char* message) {
         // Serial.println(message);
-        //
-        // Valid outbound messages:
-        //   "GARMENT:SHIRT"     — garment classification result
-        //   "GARMENT:PANTS"
-        //   "OFFSET:<x>,<y>"   — position offset in mm, e.g. "OFFSET:12,-5"
-        //   "READY"             — homing + scan complete, awaiting sequence
-        //   "ACK"               — last command executed successfully
-        //   "DONE"              — full fold sequence complete
-        //   "WARNING:<reason>"  — fault; reason examples:
-        //                           STALL_BIG_TOP
-        //                           STALL_SMALL_LEFT
-        //                           MOVE_TIMEOUT
-        //                           HOMING_TIMEOUT
-        //                           UNEXPECTED_CMD
     }
 
 private:
     StateMachine* stateMachine;
-    String inputBuffer;
+    String        inputBuffer;
 
-    void parseAndRoute(const String& line) {
-        // Tokenise line by first space:
-        //   token[0] = command keyword
-        //   token[1] = argument (may be absent)
-        //
-        // Route:
-        //   "SHIFT_BIG <n>"    → stateMachine->onCommand(line)
-        //   "SHIFT_SMALL <n>"  → stateMachine->onCommand(line)
-        //   "FOLD_BIG"         → stateMachine->onCommand(line)
-        //   "FOLD_SMALL"       → stateMachine->onCommand(line)
-        //   "UNFOLD_BIG"       → stateMachine->onCommand(line)
-        //   "UNFOLD_SMALL"     → stateMachine->onCommand(line)
-        //   "RESET"            → stateMachine->onCommand(line)
-        //   (unknown)          → send("WARNING:UNEXPECTED_CMD")
+    void parse(const String& line) {
+        if (line.startsWith("START:")) {
+            // Extract size character after the colon
+            char sizeChar = line.charAt(6);   // "START:M" → 'M'
+            FoldSize size;
+            switch (sizeChar) {
+                case 'S': size = SIZE_S; break;
+                case 'M': size = SIZE_M; break;
+                case 'L': size = SIZE_L; break;
+                default:
+                    send("WARNING:INVALID_SIZE");
+                    return;
+            }
+            stateMachine->onStartCommand(size);
+
+        } else if (line == "RESET") {
+            stateMachine->onResetCommand();
+
+        } else {
+            // Unknown command — log but do not halt
+            send("WARNING:UNKNOWN_CMD");
+        }
     }
 };

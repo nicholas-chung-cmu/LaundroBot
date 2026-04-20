@@ -15,6 +15,7 @@
 
 #pragma once
 #include <Arduino.h>
+#include "fold_library.h"
 
 // ── Configuration (TODO: fill in after hardware is finalised) ────────────────
 constexpr int MUX_CHANNEL_COUNT = 8;   // TODO: actual number of photoresistors
@@ -27,9 +28,9 @@ constexpr int MUX_SEL_2 = 4;   // TODO
 
 // ── Result struct ────────────────────────────────────────────────────────────
 struct ScanResult {
-    String garmentType;  // "SHIRT" or "PANTS"
-    int    offsetX_mm;   // left/right offset from center (positive = right)
-    int    offsetY_mm;   // top/bottom offset from center (positive = up)
+    GarmentType garment;      // GARMENT_SHIRT, GARMENT_PANTS, or GARMENT_UNKNOWN
+    float       centerX_mm;   // clothing centerpoint X offset from board center (mm), + = right
+    float       centerY_mm;   // clothing centerpoint Y offset from board center (mm), + = up
 };
 
 class SensorHandler {
@@ -44,25 +45,14 @@ public:
     }
 
     void runScan() {
-        // Step through each mux channel:
-        //   set mux select pins to binary representation of channel index
-        //   wait for mux settling time (small delayMicroseconds)
-        //   read ADC value and store in rawReadings[channel]
-        //
-        // Then run classification and offset estimation on rawReadings[]
-
         readAllChannels();
-        lastResult.garmentType = classifyGarment();
-        computeOffset(lastResult.offsetX_mm, lastResult.offsetY_mm);
+        lastResult.garment    = classifyGarment();
+        computeCenter(lastResult.centerX_mm, lastResult.centerY_mm);
     }
 
-    ScanResult getResult() {
-        return lastResult;
-    }
-
-    String getGarmentType() { return lastResult.garmentType; }
-    int    getOffsetX()     { return lastResult.offsetX_mm;  }
-    int    getOffsetY()     { return lastResult.offsetY_mm;  }
+    GarmentType getGarmentType() { return lastResult.garment;     }
+    float       getCenterX_mm()  { return lastResult.centerX_mm;  }
+    float       getCenterY_mm()  { return lastResult.centerY_mm;  }
 
 private:
     int        rawReadings[MUX_CHANNEL_COUNT];
@@ -75,24 +65,20 @@ private:
         //   rawReadings[channel] = analogRead(MUX_ADC_PIN)
     }
 
-    String classifyGarment() {
-        // TODO: implement classification algorithm based on sensor array layout
-        //
-        // Placeholder logic — replace with empirically derived thresholds:
-        //   Analyse pattern in rawReadings[] (which sensors are covered/uncovered)
-        //   Shirts and pants have different silhouettes → different coverage patterns
-        //   Return "SHIRT" or "PANTS"
-        return "SHIRT";
+    GarmentType classifyGarment() {
+        // TODO: implement classification algorithm based on sensor array layout.
+        // Analyse coverage pattern in rawReadings[] — shirts and pants have
+        // different silhouettes → different photoresistor coverage patterns.
+        return GARMENT_UNKNOWN;
     }
 
-    void computeOffset(int& outX, int& outY) {
-        // TODO: implement offset estimation
-        //
-        // Placeholder logic — replace after sensor array positions are known:
-        //   Use weighted centroid of covered sensors vs expected center
-        //   to estimate how far off-center the garment is placed
-        //   Convert sensor-index delta to mm using physical sensor spacing
-        outX = 0;
-        outY = 0;
+    void computeCenter(float& outX_mm, float& outY_mm) {
+        // TODO: implement centerpoint estimation.
+        // Use weighted centroid of covered sensors relative to the board center.
+        // Convert sensor-index position to mm using physical sensor spacing.
+        // outX_mm: positive = clothing center is right of board center
+        // outY_mm: positive = clothing center is above board center
+        outX_mm = 0.0f;
+        outY_mm = 0.0f;
     }
 };
