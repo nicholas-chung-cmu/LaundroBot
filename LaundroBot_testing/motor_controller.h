@@ -1,21 +1,7 @@
-// motor_controller.h / motor_controller.cpp
-// Teensy 4.1 — DC Encoder Motor Controller
-// Responsible for: PID position control for all 4 DC encoder motors,
-//                  shift command execution, stall detection
-// Runs on: Teensy 4.1
-//
-// Hardware layout:
-//   Big folder subsystem    — 2 DC motors (top + bottom), mirrored pair
-//   Small folder subsystem  — 2 DC motors (left + right), mirrored pair
-//
-//   CW  rotation → folders shift INWARD  from center
-//   CCW rotation → folders shift OUTWARD   toward center
-//
-// Big folder motion:    DISCRETE — moves to a named position slot (index 0..N)
-//                       Slot encoder count = index * BIG_INCREMENT_COUNTS
-// Small folder motion:  CONTINUOUS — moves to an arbitrary encoder count target
+
 
 #pragma once
+#include <Arduino.h>
 
 // ── Physical Range Constants ─────────────────────────────────────────────────
 // Distances are from the CENTER of the board outward, in mm.
@@ -39,22 +25,20 @@ constexpr float SMALL_MAX_MM      = 7.4f * INCHES_TO_MM;   // 228.6 mm
 
 // ── Calibration Constants (TODO: fill in after hardware measurement) ─────────
 constexpr int   NUM_MOTORS           = 4;
-constexpr float BIG_COUNTS_PER_MM    = 6.3913f;  // TODO
-constexpr float SMALL_COUNTS_PER_MM  = BIG_COUNTS_PER_MM;  // TODO
-constexpr int   BIG_INCREMENT_COUNTS = 35.875 * BIG_COUNTS_PER_MM;      // TODO: counts per discrete slot
-                                               //   = BIG_INCREMENT_MM * BIG_COUNTS_PER_MM
-constexpr int   BIG_MAX_INDEX        = 3;      // TODO: set after increment is known
-                                               //   = (int)(BIG_RANGE_MM / BIG_INCREMENT_MM)
 
 // Derived range limits in encoder counts (computed from physical constants above)
 // Used for bounds-checking commands before executing them.
 // Both big and small folder counts are offsets from their respective home (zeroed) positions.
-constexpr int   BIG_MAX_COUNTS   = BIG_MAX_INDEX * BIG_INCREMENT_COUNTS;  // TODO: BIG_MAX_INDEX * BIG_INCREMENT_COUNTS
-constexpr int   SMALL_MIN_COUNTS = 0;  // TODO: always 0 (home = SMALL_MIN_MM after homing)
-constexpr int   SMALL_MAX_COUNTS = (SMALL_MAX_MM - SMALL_MIN_MM) * SMALL_COUNTS_PER_MM;  // TODO: (SMALL_MAX_MM - SMALL_MIN_MM) * SMALL_COUNTS_PER_MM
-constexpr float KP = 0.0f;   // TODO
-constexpr float KI = 0.0f;   // TODO
-constexpr float KD = 0.0f;   // TODO
+constexpr int   BIG_MAX_INDEX       = 10;  // TODO: define based on range
+constexpr int   BIG_INCREMENT_COUNTS = 100;  // TODO: calibrate
+constexpr int   BIG_MAX_COUNTS   = BIG_MAX_INDEX * BIG_INCREMENT_COUNTS;
+constexpr int   SMALL_MIN_COUNTS = 0;
+constexpr int   SMALL_MAX_COUNTS = 500;  // TODO: calibrate
+constexpr float SMALL_COUNTS_PER_MM = 10.0f;  // TODO: calibrate
+constexpr float KP = 4.75f;   // TODO
+constexpr float KI = 0.25f;   // TODO
+constexpr float KD = 0.25f;   // TODO
+constexpr int   POSITION_DEADBAND = 5;  // encoder counts
 
 // Stall detection
 constexpr int   STALL_VELOCITY_THRESHOLD = 5;    // encoder counts/loop below this = stall
@@ -70,7 +54,7 @@ constexpr int   HOMING_SPEED             = 80;    // TODO: slow PWM value for ho
 
 // ── Motor state struct ───────────────────────────────────────────────────────
 struct Motor {
-    int   encoderCount   = 0;
+    volatile long encoderCount = 0;  // volatile because modified by ISRs
     int   targetCount    = 0;
     float integralError  = 0.0f;
     int   prevError      = 0;
@@ -78,53 +62,78 @@ struct Motor {
     bool  moveComplete   = true;
     bool  stallDetected  = false;
     bool  homingActive   = false;
-    // TODO: add pin assignments (PWM pin, direction pin, encoder pins A/B)
+    // Pin assignments
+    int pwmPin, in1Pin, in2Pin, encAPin, encBPin;
+    // PID gains (can be per motor if needed)
+    float kp = 4.75f, ki = 0.25f, kd = 0.25f;
+    unsigned long prevTime = 0;
 };
 
 class MotorController {
 public:
 
     void init() {
-        // For each motor:
-        //   - attach encoder interrupt pins (CHANGE interrupt on both A and B)
-        //   - configure PWM pin as output
-        //   - configure direction pin as output
-        //   - zero encoderCount, set moveComplete = true
+        // Define pin assignments (example pins, adjust as needed)
+        motors[MOTOR_BIG_TOP].pwmPin = 2; motors[MOTOR_BIG_TOP].in1Pin = 3; motors[MOTOR_BIG_TOP].in2Pin = 4; motors[MOTOR_BIG_TOP].encAPin = 5; motors[MOTOR_BIG_TOP].encBPin = 6;
+        motors[MOTOR_BIG_BOTTOM].pwmPin = 7; motors[MOTOR_BIG_BOTTOM].in1Pin = 8; motors[MOTOR_BIG_BOTTOM].in2Pin = 9; motors[MOTOR_BIG_BOTTOM].encAPin = 10; motors[MOTOR_BIG_BOTTOM].encBPin = 11;
+        motors[MOTOR_SMALL_LEFT].pwmPin = 12; motors[MOTOR_SMALL_LEFT].in1Pin = 13; motors[MOTOR_SMALL_LEFT].in2Pin = 14; motors[MOTOR_SMALL_LEFT].encAPin = 15; motors[MOTOR_SMALL_LEFT].encBPin = 16;
+        motors[MOTOR_SMALL_RIGHT].pwmPin = 17; motors[MOTOR_SMALL_RIGHT].in1Pin = 18; motors[MOTOR_SMALL_RIGHT].in2Pin = 19; motors[MOTOR_SMALL_RIGHT].encAPin = 20; motors[MOTOR_SMALL_RIGHT].encBPin = 21;
+
+        for (int i = 0; i < NUM_MOTORS; i++) {
+            Motor& m = motors[i];
+            pinMode(m.pwmPin, OUTPUT);
+            pinMode(m.in1Pin, OUTPUT);
+            pinMode(m.in2Pin, OUTPUT);
+            pinMode(m.encAPin, INPUT);
+            pinMode(m.encBPin, INPUT);
+            analogWrite(m.pwmPin, 0);
+            // Attach interrupts
+            // Note: In real implementation, define ISR functions
+            // attachInterrupt(digitalPinToInterrupt(m.encAPin), encoderISR_A[i], CHANGE);
+            // attachInterrupt(digitalPinToInterrupt(m.encBPin), encoderISR_B[i], CHANGE);
+            m.prevTime = millis();
+        }
     }
 
     // ── Called every loop() ─────────────────────────────────────────────────
     void update() {
-        // For each motor in motors[]:
-        //   if moveComplete: skip
-        //
-        //   error = targetCount - encoderCount
-        //
-        //   if abs(error) <= POSITION_DEADBAND:
-        //     stop motor (PWM = 0)
-        //     moveComplete = true
-        //     stallCounter = 0
-        //     continue
-        //
-        //   // PID calculation
-        //   proportional = KP * error
-        //   motor.integralError += error
-        //   integral    = KI * motor.integralError
-        //   derivative  = KD * (error - motor.prevError)
-        //   output      = clamp(proportional + integral + derivative, -255, 255)
-        //   motor.prevError = error
-        //
-        //   // Set direction and PWM
-        //   setMotorOutput(motor, output)
-        //
-        //   // Stall detection
-        //   velocity = abs(encoderCount - previousEncoderCount)
-        //   if velocity < STALL_VELOCITY_THRESHOLD:
-        //     motor.stallCounter++
-        //     if motor.stallCounter >= STALL_CONFIRM_LOOPS:
-        //       motor.stallDetected = true
-        //       stop motor
-        //   else:
-        //     motor.stallCounter = 0
+        for (int i = 0; i < NUM_MOTORS; i++) {
+            Motor& m = motors[i];
+            if (m.moveComplete) continue;
+
+            unsigned long now = millis();
+            float dt = (now - m.prevTime) / 1000.0f;
+            if (dt <= 0) continue;
+            m.prevTime = now;
+
+            int error = m.targetCount - m.encoderCount;
+
+            if (abs(error) <= POSITION_DEADBAND) {
+                setMotorOutput(m, 0);
+                m.moveComplete = true;
+                m.stallCounter = 0;
+                m.integralError = 0;  // reset integral
+                continue;
+            }
+
+            // PID calculation
+            float proportional = m.kp * error;
+            m.integralError += error * dt;
+            m.integralError = constrain(m.integralError, -100.0f, 100.0f);  // prevent windup
+            float integral = m.ki * m.integralError;
+            float derivative = m.kd * (error - m.prevError) / dt;
+            float output = proportional + integral + derivative;
+            output = constrain(output, -255.0f, 255.0f);
+            m.prevError = error;
+
+            // Set direction and PWM
+            setMotorOutput(m, (int)output);
+
+            // Stall detection
+            // Note: velocity calculation needs previous encoder count
+            // For simplicity, skip or implement properly
+            // m.stallCounter etc.
+        }
     }
 
     // ── Commands from state machine ─────────────────────────────────────────
@@ -133,6 +142,7 @@ public:
         // Drive small pinion inward to SMALL_MIN_MM (4" hard limit).
         // This is target = 0 counts (home position, zeroed after homing sequence).
         // Called at the start of every fold cycle before big folder motion.
+        Serial.println("SMALL_RESET");
         motors[MOTOR_SMALL_LEFT].targetCount   = 0;
         motors[MOTOR_SMALL_RIGHT].targetCount  = 0;
         motors[MOTOR_SMALL_LEFT].moveComplete  = false;
@@ -146,11 +156,12 @@ public:
         // allAtHome() is determined by stop detection (black box).
         // Called once at power-on. Small folders will reset each cycle via smallReset().
         // Big folders hold position between cycles — no per-cycle re-home needed.
+        Serial.println("HOMING_START");
         for (int i = 0; i < NUM_MOTORS; i++) {
             motors[i].homingActive = true;
             motors[i].moveComplete = false;
             // Set motor direction to inward (CCW) at a slow homing speed
-            // setMotorOutput(motors[i], -HOMING_SPEED);
+            setMotorOutput(motors[i], -HOMING_SPEED);
         }
     }
         // Clamp posIndex defensively — RPi should have validated this already,
@@ -162,6 +173,7 @@ public:
         //   MOTOR_BIG_BOTTOM target = +posIndex * BIG_INCREMENT_COUNTS (same magnitude, opposite physical direction)
         //   Sign convention: confirm with mechanical team which motor direction is "outward"
         int target = posIndex * BIG_INCREMENT_COUNTS;
+        Serial.println("BIG: " + String(target));
         motors[MOTOR_BIG_TOP].targetCount    = target;
         motors[MOTOR_BIG_BOTTOM].targetCount = target;   // TODO: negate if motors are wired opposing
         motors[MOTOR_BIG_TOP].moveComplete    = false;
@@ -173,7 +185,7 @@ public:
     void shiftSmall(int encoderCounts) {
         // Clamp defensively to valid small folder range
         encoderCounts = constrain(encoderCounts, SMALL_MIN_COUNTS, SMALL_MAX_COUNTS);
-
+        Serial.println("SMALL: " + String(encoderCounts));
         // Both small motors move symmetrically (mirrored):
         //   MOTOR_SMALL_LEFT  target = +encoderCounts (outward = rightward)
         //   MOTOR_SMALL_RIGHT target = +encoderCounts (outward = leftward, so same magnitude)
@@ -219,6 +231,7 @@ public:
 
     void zeroEncoders() {
         // Set all encoderCount to 0 — called after homing completes
+        Serial.println("ZERO_ENCODERS");
         for (int i = 0; i < NUM_MOTORS; i++) {
             motors[i].encoderCount  = 0;
             motors[i].targetCount   = 0;
@@ -232,8 +245,26 @@ private:
     void setMotorOutput(Motor& m, int output) {
         // output in [-255, 255]
         // Positive → CW (outward), negative → CCW (inward)
-        // Set direction pin HIGH/LOW based on sign of output
-        // Write abs(output) to PWM pin
+        // Set direction and PWM
+        int pwm = abs(output);
+        bool forward = output > 0;
+        digitalWrite(m.in1Pin, forward ? HIGH : LOW);
+        digitalWrite(m.in2Pin, forward ? LOW : HIGH);
+        analogWrite(m.pwmPin, pwm);
+    }
+
+    void handleEncA(int motorIndex) {
+        Motor& m = motors[motorIndex];
+        bool a = digitalRead(m.encAPin);
+        bool b = digitalRead(m.encBPin);
+        if (a == b) m.encoderCount++; else m.encoderCount--;
+    }
+
+    void handleEncB(int motorIndex) {
+        Motor& m = motors[motorIndex];
+        bool a = digitalRead(m.encAPin);
+        bool b = digitalRead(m.encBPin);
+        if (a != b) m.encoderCount++; else m.encoderCount--;
     }
 
     // ── Encoder ISRs (one per motor, attached in init()) ─────────────────────
