@@ -9,7 +9,10 @@ DC2Servo::DC2Servo(int pinPWM, int pinIN1, int pinIN2, int pinEncA, int pinEncB,
     _countsPerRev(countsPerRev), _degPerCount(360.0f / countsPerRev),
     _encoderCount(0), _currentAngle(0), _targetAngle(0),
     _kp(kp), _ki(ki), _kd(kd),
-    _integralTerm(0), _prevError(0), _prevTime(0), _lastPWM(0)
+    _integralTerm(0), _prevError(0), _prevTime(0), _lastPWM(0),
+    _ramping(false), _rampStartAngle(0), _rampTargetAngle(0), _rampStartTime(0), _rampDuration(0),
+    _phase(ACCEL), _maxVelocity(180.0f), _acceleration(360.0f), _distance(0),
+    _accelTime(0), _constTime(0), _decelTime(0)
 {}
 
 // begin(): call this in setup().
@@ -29,14 +32,44 @@ void DC2Servo::begin(void (*isrA)(), void (*isrB)()) {
   attachInterrupt(digitalPinToInterrupt(_pinEncA), isrA, CHANGE);
   attachInterrupt(digitalPinToInterrupt(_pinEncB), isrB, CHANGE);
 
-  _prevTime = millis();
+  _prevTime = micros();
 }
 
 // writeAngle(): set a new target angle in degrees.
 // The motor will drive toward this angle on the next update() call.
 void DC2Servo::writeAngle(float degrees) {
   _targetAngle = degrees;
+  _ramping = false;  // cancel any ongoing ramp
+}
 
+// startRamp(): ramp to a target angle over a specified duration.
+// The target angle changes linearly from current target to new target.
+void DC2Servo::startRamp(float targetAngle, unsigned long duration_ms) {
+  _rampStartAngle = _targetAngle;
+  _rampTargetAngle = targetAngle;
+  _rampStartTime = millis();
+  _rampDuration = duration_ms;
+  _ramping = true;
+}
+
+// startTrapezoidalRamp(): move to target with trapezoidal velocity profile.
+// Calculates accel, const vel, decel phases based on max velocity and acceleration.
+void DC2Servo::startTrapezoidalRamp(float targetAngle, unsigned long duration_ms, 
+                                    float maxVelocity, float acceleration) {
+  _rampStartAngle = _targetAngle;
+  _rampTargetAngle = targetAngle;
+  _distance = targetAngle - _targetAngle;
+  _maxVelocity = maxVelocity;
+  _acceleration = acceleration;
+  _rampStartTime = millis();
+  _rampDuration = duration_ms;
+
+  // For simplicity, divide time equally into accel, const, decel
+  _accelTime = _rampDuration / 3;
+  _constTime = _rampDuration / 3;
+  _decelTime = _rampDuration / 3;
+  _phase = ACCEL;
+  _ramping = true;
 }
 
 // getTargetAngle(): returns the current target angle in degrees.
@@ -54,9 +87,42 @@ float DC2Servo::getCurrentAngle() const {
 // Reads the encoder, computes PID output, and drives the motor.
 // Returns the PWM value that was applied (0–255).
 int DC2Servo::update() {
+  // Handle ramping: update target angle if ramping
+  if (_ramping) {
+    unsigned long elapsed = millis() - _rampStartTime;
+    if (elapsed >= _rampDuration) {
+      _targetAngle = _rampTargetAngle;
+      _ramping = false;
+    } else {
+      // Trapezoidal velocity profile position calculation
+      float t = elapsed / 1000.0f; // seconds
+      float pos = 0;
+      if (_phase == ACCEL && elapsed < _accelTime) {
+        // Acceleration phase: pos = 0.5 * a * t²
+        float accelTime = _accelTime / 1000.0f;
+        pos = 0.5f * _acceleration * t * t;
+      } else if (_phase == CONST_VEL && elapsed < _accelTime + _constTime) {
+        // Constant velocity phase: pos = accel_dist + v * (t - accel_time)
+        float accelTime = _accelTime / 1000.0f;
+        float accelDist = 0.5f * _acceleration * accelTime * accelTime;
+        pos = accelDist + _maxVelocity * (t - accelTime);
+        if (elapsed >= _accelTime) _phase = CONST_VEL;
+      } else {
+        // Deceleration phase: pos = total_dist - 0.5 * a * (total_time - t)²
+        _phase = DECEL;
+        float totalTime = _rampDuration / 1000.0f;
+        pos = _distance - 0.5f * _acceleration * (totalTime - t) * (totalTime - t);
+      }
+      // Scale pos to the distance
+      float progress = pos / abs(_distance);
+      progress = constrain(progress, 0.0f, 1.0f);
+      _targetAngle = _rampStartAngle + (_rampTargetAngle - _rampStartAngle) * progress;
+    }
+  }
+
   // Calculate time elapsed since last update in seconds
-  unsigned long now = millis();
-  float dt = (now - _prevTime) / 1000.0f;
+  unsigned long now = micros();
+  float dt = (now - _prevTime) / 1000000.0f;
   if (dt <= 0) return _lastPWM;  // skip if no time has passed
   _prevTime = now;
 
@@ -73,7 +139,7 @@ int DC2Servo::update() {
   float error = _targetAngle - _currentAngle;
 
   // Integral: accumulate error over time, clamped to prevent windup
-  _integralTerm = constrain(_integralTerm + error * dt, -100.0f, 100.0f);
+  _integralTerm = _integralTerm + error * dt;
 
   // Derivative: rate of change of error
   float deriv = (error - _prevError) / dt;
@@ -101,11 +167,17 @@ int DC2Servo::update() {
 // printData(): prints a CSV-style line to Serial for debugging/plotting.
 // Format: time , target , current , error , pwm
 void DC2Servo::printData() const {
-  Serial.print(millis() / 1000.0f, 2);
-  Serial.print(" , target: ");   Serial.print(_targetAngle, 2);
-  Serial.print(" , current: ");  Serial.print(_currentAngle, 2);
-  Serial.print(" , error: ");    Serial.print(_targetAngle - _currentAngle, 2);
-  Serial.print(" , pwm: ");      Serial.println(_lastPWM);
+  static unsigned long lastPrint = 0;
+  unsigned long now = micros();
+  if (now - lastPrint >= 100000) {  // 100ms in microseconds
+    Serial.print(now / 1000000.0f, 2);
+    Serial.print(" , target: ");   Serial.print(_targetAngle, 2);
+    Serial.print(" , current: ");  Serial.print(_currentAngle, 2);
+    Serial.print(" , error: ");    Serial.print(_targetAngle - _currentAngle, 2);
+    Serial.print(" , pwm: ");      Serial.println(_lastPWM);
+    Serial.println(_currentAngle, 0);
+    lastPrint = now;
+  }
 }
 
 // handleEncA(): ISR for encoder channel A.
@@ -131,3 +203,17 @@ void DC2Servo::_drive(int pwm, bool forward) {
   digitalWrite(_pinIN2, forward ? LOW  : HIGH);
   analogWrite(_pinPWM, pwm);
 }
+
+// // translate(): utility function to periodically update motor target angle.
+// // Oscillates between a positive angle and 0, determining direction based on angle difference.
+// void translate(DC2Servo &motor, bool &dir, unsigned long &lastMove, float positiveAngle) {
+//   unsigned long now = micros();
+//   if (now - lastMove >= 6000000) {  // 2000ms in microseconds
+//     float currentTarget = motor.getTargetAngle();
+//     float newTarget = (currentTarget == 0.0f) ? positiveAngle : 0.0f;
+//     float diff = newTarget - currentTarget;
+//     dir = (diff > 0);  // Determine direction: true if new > old, false if new < old
+//     motor.writeAngle(newTarget);
+//     lastMove = now;
+//   }
+// }
