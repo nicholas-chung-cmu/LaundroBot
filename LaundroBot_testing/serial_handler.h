@@ -16,7 +16,7 @@
 
 #pragma once
 #include <Arduino.h>
-#include "fold_library.h"
+#include "sequencer.h"
 #include "state_machine.h"
 
 class SerialHandler {

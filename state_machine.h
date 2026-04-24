@@ -55,6 +55,7 @@ public:
             detectedGarment = sensors->getGarmentType();
             centerX_mm      = sensors->getCenterX_mm();
             centerY_mm      = sensors->getCenterY_mm();
+            Serial.println("Sensor scan: Garment=" + String(detectedGarment) + ", CenterX=" + String(centerX_mm) + ", CenterY=" + String(centerY_mm));
             transition(STATE_READY);
             break;
 
@@ -137,6 +138,7 @@ private:
     unsigned long elapsed() { return millis() - stateStartMs; }
 
     void transition(State next, const char* warningReason = nullptr) {
+        Serial.println("State transition to: " + String(next) + (warningReason ? String(" Reason: ") + warningReason : ""));
         currentState = next;
         stateStartMs = millis();
 
@@ -174,6 +176,7 @@ private:
     }
 
     void executeStep(const FoldStep& step) {
+        Serial.println("Executing step: " + String(step.type) + " arg: " + String(step.arg));
         switch (step.type) {
 
         case STEP_SMALL_RESET:

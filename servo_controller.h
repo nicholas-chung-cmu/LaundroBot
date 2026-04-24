@@ -56,24 +56,30 @@ public:
     // Each folder is actuated individually — only the commanded servo sweeps.
     // Movement is non-blocking; actual angle advances each update() call.
 
-    void foldBottom()  { startMove(SERVO_BIG_BOT_A,    BIG_FOLD_ANGLE);
+    void foldBottom()  { Serial.println("Servo: foldBottom");
+                         startMove(SERVO_BIG_BOT_A,    BIG_FOLD_ANGLE);
                          startMove(SERVO_BIG_BOT_B,    BIG_FOLD_ANGLE);  }
 
-    void foldTop()     { startMove(SERVO_BIG_TOP_A,    BIG_FOLD_ANGLE);
+    void foldTop()     { Serial.println("Servo: foldTop");
+                         startMove(SERVO_BIG_TOP_A,    BIG_FOLD_ANGLE);
                          startMove(SERVO_BIG_TOP_B,    BIG_FOLD_ANGLE);  }
 
-    void foldLeft()    { startMove(SERVO_SMALL_LEFT_A,  SMALL_FOLD_ANGLE);
+    void foldLeft()    { Serial.println("Servo: foldLeft");
+                         startMove(SERVO_SMALL_LEFT_A,  SMALL_FOLD_ANGLE);
                          startMove(SERVO_SMALL_LEFT_B,  SMALL_FOLD_ANGLE); }
 
-    void foldRight()   { startMove(SERVO_SMALL_RIGHT_A, SMALL_FOLD_ANGLE);
+    void foldRight()   { Serial.println("Servo: foldRight");
+                         startMove(SERVO_SMALL_RIGHT_A, SMALL_FOLD_ANGLE);
                          startMove(SERVO_SMALL_RIGHT_B, SMALL_FOLD_ANGLE); }
 
-    void unfoldBig()   { startMove(SERVO_BIG_TOP_A,    BIG_REST_ANGLE);
+    void unfoldBig()   { Serial.println("Servo: unfoldBig");
+                         startMove(SERVO_BIG_TOP_A,    BIG_REST_ANGLE);
                          startMove(SERVO_BIG_TOP_B,    BIG_REST_ANGLE);
                          startMove(SERVO_BIG_BOT_A,    BIG_REST_ANGLE);
                          startMove(SERVO_BIG_BOT_B,    BIG_REST_ANGLE);  }
 
-    void unfoldSmall() { startMove(SERVO_SMALL_LEFT_A,  SMALL_REST_ANGLE);
+    void unfoldSmall() { Serial.println("Servo: unfoldSmall");
+                         startMove(SERVO_SMALL_LEFT_A,  SMALL_REST_ANGLE);
                          startMove(SERVO_SMALL_LEFT_B,  SMALL_REST_ANGLE);
                          startMove(SERVO_SMALL_RIGHT_A, SMALL_REST_ANGLE);
                          startMove(SERVO_SMALL_RIGHT_B, SMALL_REST_ANGLE); }
@@ -98,6 +104,7 @@ public:
                 currentAngle[i] += (delta > 0) ? SERVO_SWEEP_SPEED : -SERVO_SWEEP_SPEED;
             }
             // servos[i].write(currentAngle[i]);
+            Serial.println("Servo " + String(i) + " angle: " + String(currentAngle[i]));
         }
     }
 

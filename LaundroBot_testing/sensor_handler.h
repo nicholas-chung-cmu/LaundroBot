@@ -15,7 +15,7 @@
 
 #pragma once
 #include <Arduino.h>
-#include "fold_library.h"
+#include "sequencer.h"
 
 // ── Configuration (TODO: fill in after hardware is finalised) ────────────────
 constexpr int MUX_CHANNEL_COUNT = 8;   // TODO: actual number of photoresistors
@@ -78,7 +78,7 @@ private:
         // Convert sensor-index position to mm using physical sensor spacing.
         // outX_mm: positive = clothing center is right of board center
         // outY_mm: positive = clothing center is above board center
-        outX_mm = 0.0f;
+        outX_mm = 60.0f;
         outY_mm = 0.0f;
     }
 };

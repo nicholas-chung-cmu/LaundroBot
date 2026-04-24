@@ -47,6 +47,8 @@ constexpr int SMALL_FOLD_ANGLE = 90;   // TODO
 enum GarmentType {
     GARMENT_SHIRT,
     GARMENT_PANTS,
+    GARMENT_PANTS_LEFT,
+    GARMENT_PANTS_RIGHT,
     GARMENT_UNKNOWN
 };
 enum FoldSize { SIZE_S, SIZE_M, SIZE_L };
@@ -58,16 +60,16 @@ struct FoldDimensions {
 
 // Shirt dimensions per size
 constexpr FoldDimensions SHIRT_DIMS[3] = {
-    { 0.0f, 0.0f },   // SIZE_S — TODO
-    { 0.0f, 0.0f },   // SIZE_M — TODO
-    { 0.0f, 0.0f },   // SIZE_L — TODO
+    { 8.6f, 8.6f },   // SIZE_S — TODO
+    { 11.4f, 11.4f },   // SIZE_M — TODO
+    { 14.25f, 14.25f },   // SIZE_L — TODO
 };
 
 // Pants dimensions per size (only half_height used; width is a single fold)
 constexpr FoldDimensions PANTS_DIMS[3] = {
-    { 0.0f, 0.0f },   // SIZE_S — TODO
-    { 0.0f, 0.0f },   // SIZE_M — TODO
-    { 0.0f, 0.0f },   // SIZE_L — TODO
+    { 8.6f, 8.6f },   // SIZE_S — TODO
+    { 11.4f, 11.4f },   // SIZE_M — TODO
+    { 14.25f, 14.25f },   // SIZE_L — TODO
 };
 
 // ─── Step Types ───────────────────────────────────────────────────────────────
@@ -136,6 +138,13 @@ inline FoldSequence buildSequence(
 
     int bottom_slot = bigMmToIndex(bottom_mm);
     int top_slot    = bigMmToIndex(top_mm);
+
+    // decide if pants or shirt
+    if ((garment == GARMENT_PANTS) && (centerX_mm > 0)) {
+        garment = GARMENT_PANTS_RIGHT;
+    } else {
+        garment = GARMENT_PANTS_LEFT;
+    }
 
     if (!bigInBounds(bottom_slot) || !bigInBounds(top_slot)) {
         snprintf(seq.errorReason, sizeof(seq.errorReason), "PLACEMENT_OUT_OF_RANGE");

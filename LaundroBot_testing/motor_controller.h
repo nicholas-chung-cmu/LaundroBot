@@ -14,14 +14,14 @@
 // After homing, encoders are zeroed at MIN position (slot 0 for big folders).
 // All subsequent targets are offsets from this zeroed home position.
 
-constexpr float INCHES_TO_MM      = 25.4f;
+//constexpr float INCHES_TO_MM      = 25.4f;
 
-constexpr float BIG_MIN_MM        = 4.3f * INCHES_TO_MM;   // 101.6 mm
-constexpr float BIG_MAX_MM        = 8.0f * INCHES_TO_MM;   // 203.2 mm
-constexpr float BIG_RANGE_MM      = BIG_MAX_MM - BIG_MIN_MM; // 101.6 mm of travel
+// constexpr float BIG_MIN_MM        = 4.3f * INCHES_TO_MM;   // 101.6 mm
+// constexpr float BIG_MAX_MM        = 8.0f * INCHES_TO_MM;   // 203.2 mm
+// constexpr float BIG_RANGE_MM      = BIG_MAX_MM - BIG_MIN_MM; // 101.6 mm of travel
 
-constexpr float SMALL_MIN_MM      = 4.3f * INCHES_TO_MM;   // 101.6 mm
-constexpr float SMALL_MAX_MM      = 7.4f * INCHES_TO_MM;   // 228.6 mm
+// constexpr float SMALL_MIN_MM      = 4.3f * INCHES_TO_MM;   // 101.6 mm
+// constexpr float SMALL_MAX_MM      = 7.4f * INCHES_TO_MM;   // 228.6 mm
 
 // ── Calibration Constants (TODO: fill in after hardware measurement) ─────────
 constexpr int   NUM_MOTORS           = 4;
@@ -29,12 +29,12 @@ constexpr int   NUM_MOTORS           = 4;
 // Derived range limits in encoder counts (computed from physical constants above)
 // Used for bounds-checking commands before executing them.
 // Both big and small folder counts are offsets from their respective home (zeroed) positions.
-constexpr int   BIG_MAX_INDEX       = 10;  // TODO: define based on range
+//constexpr int   BIG_MAX_INDEX       = 10;  // TODO: define based on range
 constexpr int   BIG_INCREMENT_COUNTS = 100;  // TODO: calibrate
 constexpr int   BIG_MAX_COUNTS   = BIG_MAX_INDEX * BIG_INCREMENT_COUNTS;
 constexpr int   SMALL_MIN_COUNTS = 0;
 constexpr int   SMALL_MAX_COUNTS = 500;  // TODO: calibrate
-constexpr float SMALL_COUNTS_PER_MM = 10.0f;  // TODO: calibrate
+//constexpr float SMALL_COUNTS_PER_MM = 10.0f;  // TODO: calibrate
 constexpr float KP = 4.75f;   // TODO
 constexpr float KI = 0.25f;   // TODO
 constexpr float KD = 0.25f;   // TODO

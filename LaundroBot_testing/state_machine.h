@@ -8,7 +8,7 @@
 
 #pragma once
 #include <Arduino.h>
-#include "fold_library.h"
+#include "sequencer.h"
 #include "motor_controller.h"
 #include "servo_controller.h"
 #include "sensor_handler.h"

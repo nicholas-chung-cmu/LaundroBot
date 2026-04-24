@@ -48,6 +48,7 @@ public:
         readAllChannels();
         lastResult.garment    = classifyGarment();
         computeCenter(lastResult.centerX_mm, lastResult.centerY_mm);
+        Serial.println("Sensor scan complete: readings, garment=" + String(lastResult.garment) + ", centerX=" + String(lastResult.centerX_mm) + ", centerY=" + String(lastResult.centerY_mm));
     }
 
     GarmentType getGarmentType() { return lastResult.garment;     }
@@ -59,26 +60,21 @@ private:
     ScanResult lastResult;
 
     void readAllChannels() {
-        // For channel = 0 to MUX_CHANNEL_COUNT - 1:
-        //   write channel bits to MUX_SEL_0/1/2
-        //   delayMicroseconds(10)  // allow mux to settle
-        //   rawReadings[channel] = analogRead(MUX_ADC_PIN)
+        // Dummy readings for testing
+        for (int i = 0; i < MUX_CHANNEL_COUNT; i++) {
+            rawReadings[i] = random(100, 900);  // dummy analog values
+        }
+        Serial.println("Dummy sensor readings: " + String(rawReadings[0]) + ", " + String(rawReadings[1]) + ", ...");
     }
 
     GarmentType classifyGarment() {
-        // TODO: implement classification algorithm based on sensor array layout.
-        // Analyse coverage pattern in rawReadings[] — shirts and pants have
-        // different silhouettes → different photoresistor coverage patterns.
-        return GARMENT_UNKNOWN;
+        // Dummy classification
+        return GARMENT_SHIRT;  // or random
     }
 
     void computeCenter(float& outX_mm, float& outY_mm) {
-        // TODO: implement centerpoint estimation.
-        // Use weighted centroid of covered sensors relative to the board center.
-        // Convert sensor-index position to mm using physical sensor spacing.
-        // outX_mm: positive = clothing center is right of board center
-        // outY_mm: positive = clothing center is above board center
-        outX_mm = 0.0f;
-        outY_mm = 0.0f;
+        // Dummy center
+        outX_mm = 10.0f;
+        outY_mm = 5.0f;
     }
 };
