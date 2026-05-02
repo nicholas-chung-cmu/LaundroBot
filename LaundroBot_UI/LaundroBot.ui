@@ -1,0 +1,718 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>906</width>
+    <height>677</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QStackedWidget" name="stackedWidget">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>10</y>
+      <width>685</width>
+      <height>586</height>
+     </rect>
+    </property>
+    <property name="currentIndex">
+     <number>3</number>
+    </property>
+    <widget class="QWidget" name="page_start">
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#page_start {
+    border-image: url(:/images/logo_image.png) 0 0 0 0 stretch stretch;
+}</string>
+     </property>
+     <widget class="QWidget" name="layoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>520</y>
+        <width>891</width>
+        <height>59</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_7">
+       <item>
+        <spacer name="horizontalSpacer_5">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="font">
+          <font>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QLabel {
+    font-size: 26pt;
+    background-color:transparent;
+    color: black; /* Text color */
+    border: none; /* Optional: adds a border */
+    padding: 5px; /* Optional: adds space between text and border */
+	
+}</string>
+         </property>
+         <property name="text">
+          <string>Touch To Start</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_6">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QPushButton" name="mainButton">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>691</width>
+        <height>591</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: rgba(0, 0, 0, 0);
+border: none;</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="page_main">
+     <property name="styleSheet">
+      <string notr="true">#page_main {
+    border-image: url(:/images/logo_image_2.png) 0 0 0 0 stretch stretch;
+}
+
+QPushButton {
+    color: white;
+    font-weight: bold;
+    font-family: &quot;Segoe UI&quot;, &quot;Arial&quot;, sans-serif;
+    font-size: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3); /* Subtle metallic edge */
+    border-radius: 4px; /* Sharper corners for a robotic look */
+    padding: 10px;
+}
+
+QPushButton:hover {
+    border: 2px solid white;
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle highlight */
+}
+
+QPushButton:pressed {
+    background-color: rgba(0, 0, 0, 0.5); /* Darkens when clicked */
+}</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="spacing">
+         <number>90</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="startScreen">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>90</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <family>Segoe UI,Arial,sans-serif</family>
+            <pointsize>-1</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: gray;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+          </property>
+          <property name="text">
+           <string>Start Screen</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="emergencyStop">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>90</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <family>Segoe UI,Arial,sans-serif</family>
+            <pointsize>-1</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: red;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+          </property>
+          <property name="text">
+           <string>EMERGENCY STOP</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="resetFold">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>90</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <family>Segoe UI,Arial,sans-serif</family>
+            <pointsize>-1</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: gray;
+color: white;
+font-weight: bold;
+border-radius: 5px;</string>
+          </property>
+          <property name="text">
+           <string>Reset Folders</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="QLabel" name="status_fold">
+            <property name="font">
+             <font>
+              <pointsize>18</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: white;
+font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Fold Size Selection: None</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="status_clothes">
+            <property name="font">
+             <font>
+              <pointsize>18</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: white;
+font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Clothes Type Selection: None</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="status_sequence">
+            <property name="font">
+             <font>
+              <pointsize>18</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: white;
+font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Fold Sequence: Ready</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="foldSize">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>150</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>250</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <family>Segoe UI,Arial,sans-serif</family>
+            <pointsize>-1</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 6px;</string>
+          </property>
+          <property name="text">
+           <string>Select Fold Size</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="clothesButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>150</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>200</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 6px;</string>
+          </property>
+          <property name="text">
+           <string>Select Clothes 
+Type</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="foldButton">
+          <property name="minimumSize">
+           <size>
+            <width>150</width>
+            <height>150</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: green;
+color: white;
+font-weight: bold;
+border-radius: 6px;</string>
+          </property>
+          <property name="text">
+           <string>Fold</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>30</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="page_shirt">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#page_shirt {
+    border-image: url(:/images/logo_image_2.png) 0 0 0 0 stretch stretch;
+}
+</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="minimumSize">
+             <size>
+              <width>100</width>
+              <height>100</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>200</width>
+              <height>100</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: gray;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+            </property>
+            <property name="text">
+             <string>Select Fold Size</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="smallButton">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>110</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>500</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>18</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+            </property>
+            <property name="text">
+             <string>SMALL</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="mediumButton">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>110</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>500</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>20</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+            </property>
+            <property name="text">
+             <string>MEDIUM</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="largeButton">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>110</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>500</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>20</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+            </property>
+            <property name="text">
+             <string>LARGE</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="returnButton">
+            <property name="minimumSize">
+             <size>
+              <width>300</width>
+              <height>110</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>20</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: red;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+            </property>
+            <property name="text">
+             <string>RETURN</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="page_type">
+     <property name="styleSheet">
+      <string notr="true">#page_type {
+    border-image: url(:/images/logo_image_2.png) 0 0 0 0 stretch stretch;
+}</string>
+     </property>
+     <widget class="QWidget" name="verticalLayoutWidget_2">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>60</y>
+        <width>271</width>
+        <height>381</height>
+       </rect>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_7">
+       <item>
+        <widget class="QPushButton" name="shirtButton">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>150</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Segoe UI</family>
+           <pointsize>20</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+         </property>
+         <property name="text">
+          <string>SHIRTS</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pantButton">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>150</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <family>Segoe UI</family>
+           <pointsize>20</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: blue;
+color: white;
+font-weight: bold;
+border-radius: 10px;</string>
+         </property>
+         <property name="text">
+          <string>PANTS</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>906</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
