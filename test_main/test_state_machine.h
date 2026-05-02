@@ -3,15 +3,11 @@
 // Responsible for: tracking robot phase, running the fold sequence internally,
 //                  detecting faults, sending READY/DONE/WARNING to RPi
 // Runs on: Teensy 4.1
-// Depends on: fold_library.h, motor_controller.h, servo_controller.h,
+// Depends on: fold_library.h, actuator_interfacer.h,
 //             sensor_handler.h, serial_handler.h
 
 #pragma once
 #include <Arduino.h>
-#include "fold_library.h"
-#include "motor_controller.h"
-#include "servo_controller.h"
-#include "sensor_handler.h"
 
 // ─── States ───────────────────────────────────────────────────────────────────
 
@@ -30,15 +26,27 @@ enum State {
 class StateMachine {
 public:
 
-    void init(MotorController* m, ServoController* s, SensorHandler* sens) {
-        motors  = m;
-        servos  = s;
-        sensors = sens;
+    GarmentType  detectedGarment = GARMENT_SHIRT;
+    float        centerX_mm      = 0.0f;
+    float        centerY_mm      = 0.0f;
+
+    void init(ActuatorInterfacer* a, SensorHandler* s) {
+        actuators = a; // Save the permanent pointer
+        sensors = s;
     }
 
     // ── Called every loop() ───────────────────────────────────────────────────
     void update() {
         switch (currentState) {
+
+        case STATE_HOMING:
+            if (actuators->allAtHome()) {
+                actuators->zeroEncoders();
+                transition(STATE_SCAN);
+            } else if (elapsed() > HOMING_TIMEOUT_MS) {
+                transition(STATE_WARNING, "HOMING_TIMEOUT");
+            }
+            break;
 
         case STATE_SCAN:
             // Synchronous single mux sweep — completes within one loop() call.
@@ -55,20 +63,24 @@ public:
 
         case STATE_FOLD_SEQ:
             if (currentStepComplete()) {
+                Serial.println("step done");
                 stepIndex++;
                 if (stepIndex >= sequence.count) {
-                    transition(STATE_DONE);
+                    transition(STATE_IDLE);
                 } else {
                     executeStep(sequence.steps[stepIndex]);
                     stateStartMs = millis();   // reset timeout for new step
                 }
-            } else if (elapsed() > MOVE_TIMEOUT_MS) {
+            } 
+            else if (elapsed() > MOVE_TIMEOUT_MS) {
+                Serial.println("move timeout");
                 transition(STATE_WARNING, "MOVE_TIMEOUT");
-            } else if (motors->stallDetected()) {
-                char reason[32];
-                snprintf(reason, sizeof(reason), "STALL_%s", motors->stalledMotorName());
-                transition(STATE_WARNING, reason);
-            }
+            } 
+            // else if (actuators->stallDetected()) {
+            //     char reason[32];
+            //     snprintf(reason, sizeof(reason), "STALL_%s", actuators->stalledMotorName());
+            //     transition(STATE_WARNING, reason);
+            // }
             break;
 
         case STATE_WARNING:
@@ -83,12 +95,16 @@ public:
 
     // ── Called by serial_handler when "START:<size>" received ─────────────────
     void onStartCommand(FoldSize size) {
-        if (currentState != STATE_READY) return;
-
+        if (currentState != STATE_READY) {
+            Serial.println("canceling start");
+            return;
+        }
+        Serial.println("start build sequence");
         sequence = buildSequence(detectedGarment, size, centerX_mm, centerY_mm);
 
         if (!sequence.valid) {
             transition(STATE_WARNING, sequence.errorReason);
+            Serial.println("sequence invalid");
             return;
         }
 
@@ -96,29 +112,24 @@ public:
         currentState = STATE_FOLD_SEQ;
         stateStartMs = millis();
         executeStep(sequence.steps[0]);
+        Serial.println("step 0 done");
     }
 
     // ── Called by serial_handler when "RESET" received ────────────────────────
     void onResetCommand() {
-        motors->stopAll();
-        servos->stopAll();
+        actuators->stopAll();
         // Re-scan without re-homing — big folders hold position between cycles,
         // small folders will reset at the start of the next fold sequence.
         transition(STATE_SCAN);
     }
 
 private:
-    State        currentState    = STATE_IDLE;
+    State        currentState    = STATE_READY;
     FoldSequence sequence;
     int          stepIndex       = 0;
     unsigned long stateStartMs   = 0;
 
-    GarmentType  detectedGarment = GARMENT_UNKNOWN;
-    float        centerX_mm      = 0.0f;
-    float        centerY_mm      = 0.0f;
-
-    MotorController* motors;
-    ServoController* servos;
+    ActuatorInterfacer* actuators;
     SensorHandler*   sensors;
 
     // Timeouts — TODO: tune to ~2× worst-case move duration
@@ -132,15 +143,16 @@ private:
         stateStartMs = millis();
 
         switch (next) {
-        case STATE_HOMING:
-            motors->startHoming();   // drives all motors inward
-            break;
+        // case STATE_HOMING:
+        //     actuators->startHoming();   // drives all motors inward
+        //     break;
 
         case STATE_READY:
             // serial_handler::send("READY");
+            Serial.println("ready for next input");
             break;
 
-        case STATE_DONE:
+        case STATE_IDLE:
             // serial_handler::send("DONE");
             // After DONE, immediately re-scan for next garment.
             // Big folders stay where they are (no re-home needed).
@@ -150,8 +162,7 @@ private:
             break;
 
         case STATE_WARNING:
-            motors->stopAll();
-            servos->stopAll();
+            actuators->stopAll();
             if (warningReason) {
                 // char buf[64];
                 // snprintf(buf, sizeof(buf), "WARNING:%s", warningReason);
@@ -165,53 +176,10 @@ private:
     }
 
     void executeStep(const FoldStep& step) {
-        switch (step.type) {
-
-        case STEP_SMALL_RESET:
-            // Drive small pinion inward to SMALL_MIN_MM (4" hard limit).
-            // This clears the path for big folder movement and happens every cycle.
-            motors->smallReset();
-            break;
-
-        case STEP_SHIFT_BIG:
-            // Move big pinion to absolute slot index from home.
-            // Both top and bottom folders move symmetrically.
-            motors->shiftBig(step.arg);
-            break;
-
-        case STEP_SHIFT_SMALL:
-            // Move small pinion to absolute encoder count from home.
-            // Both left and right folders move symmetrically.
-            motors->shiftSmall(step.arg);
-            break;
-
-        case STEP_FOLD_BIG_BOTTOM:
-            servos->foldBottom();
-            break;
-
-        case STEP_FOLD_BIG_TOP:
-            servos->foldTop();
-            break;
-
-        case STEP_FOLD_SMALL_LEFT:
-            servos->foldLeft();
-            break;
-
-        case STEP_FOLD_SMALL_RIGHT:
-            servos->foldRight();
-            break;
-
-        case STEP_UNFOLD_BIG:
-            servos->unfoldBig();
-            break;
-
-        case STEP_UNFOLD_SMALL:
-            servos->unfoldSmall();
-            break;
-        }
+        actuators->executeStep(step);
     }
 
     bool currentStepComplete() {
-        return motors->currentMoveComplete() && servos->allMovesComplete();
+        return actuators->currentMoveComplete();
     }
 };

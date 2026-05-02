@@ -15,7 +15,6 @@
 
 #pragma once
 #include <Arduino.h>
-#include "fold_library.h"
 
 // ── Configuration (TODO: fill in after hardware is finalised) ────────────────
 constexpr int MUX_CHANNEL_COUNT = 8;   // TODO: actual number of photoresistors
